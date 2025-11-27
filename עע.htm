@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מציג סולמות מוזיקליים - VexFlow Demo</title>
+    <!-- טעינת Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- הגדרת גופן אינטר ועיצוב בסיסי -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Heebo:wght@100..900&display=swap');
+        body {
+            font-family: 'Heebo', sans-serif;
+            background-color: #f7f9fb;
+        }
+        /* סגנון כללי לעיצוב ה-VexFlow */
+        .scale-container {
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            padding: 20px;
+            margin-bottom: 24px;
+            transition: transform 0.2s;
+        }
+        .scale-container:hover {
+            transform: translateY(-2px);
+        }
+    </style>
+    <!-- טעינת VexFlow באמצעות CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/vexflow/build/cjs/vexflow.js"></script>
+</head>
+<body class="p-4 md:p-8">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-3xl font-extrabold text-gray-800 mb-6 border-b-2 border-indigo-400 pb-2">תצוגת סולמות מוזיקליים (VexFlow)</h1>
+        <p class="text-gray-600 mb-8">דוגמאות להצגת סולמות נפוצים על החמשה באמצעות ספריית VexFlow.</p>
+        
+        <!-- הקונטיינר בו יוצגו כל החמשות -->
+        <div id="staves-container" class="space-y-6">
+            <!-- כאן יתווספו אוטומטית כלי הנגינה המצוירים על ידי JavaScript -->
+        </div>
+    </div>
+
+    <script type="module">
+        // ייבוא מודולים מתוך VexFlow (הספרייה נטענה כבר גלובלית, אך שימוש ב-module מאפשר ייבוא מסודר)
+        const { Renderer, Stave, StaveNote, Voice, Formatter, Accidental } = Vex.Flow;
+
+        // הגדרת משתני קונפיגורציה בסיסיים
+        const container = document.getElementById('staves-container');
+        const staveWidth = 350; // רוחב כל חמשה
+        const staveHeight = 150; // גובה עבור כל חמשה
+
+        /**
+         * פונקציה לעיצוב והוספת קונטיינר חדש לחמשה.
+         * @param {string} title - כותרת הסולם להצגה.
+         * @returns {HTMLElement} - אלמנט ה-div החדש עבור השרטוט.
+         */
+        function createStaveContainer(title) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'scale-container';
+
+            const titleElem = document.createElement('h2');
+            titleElem.className = 'text-xl font-semibold text-indigo-700 mb-4';
+            titleElem.textContent = title;
+            wrapper.appendChild(titleElem);
+
+            const staveDiv = document.createElement('div');
+            staveDiv.style.width = `${staveWidth}px`;
+            staveDiv.style.height = `${staveHeight}px`;
+            wrapper.appendChild(staveDiv);
+
+            container.appendChild(wrapper);
+            return staveDiv;
+        }
+
+        /**
+         * פונקציה לשרטוט סולם נתון באמצעות VexFlow.
+         * @param {string} title - כותרת הסולם.
+         * @param {string} clef - מפתח: 'treble' או 'bass'.
+         * @param {string} keySignature - חתימת המפתח (לדוגמה 'C', 'G', 'Bb').
+         * @param {Array<string>} noteStrings - מערך מחרוזות של תווים (לדוגמה 'c/4', 'd#/4').
+         * @param {string} optionalInfo - מידע נוסף (כגון 'טבעי', 'הרמוני').
+         */
+        function drawScale(title, clef, keySignature, noteStrings, optionalInfo = '') {
+            const staveDiv = createStaveContainer(`${title} ${optionalInfo}`);
+            
+            // 1. הגדרת רנדרר (קנבס)
+            const renderer = new Renderer(staveDiv, Renderer.Backends.SVG);
+            renderer.resize(staveWidth, staveHeight);
+            const context = renderer.getContext();
+            context.setFont('Arial', 10);
+
+            // 2. יצירת החמשה (Stave)
+            const stave = new Stave(10, 0, staveWidth - 20); // x, y, width
+            stave.addClef(clef).addKeySignature(keySignature);
+            stave.setContext(context).draw();
+
+            // 3. יצירת אוביקטי תווים (StaveNote)
+            const notes = noteStrings.map(noteStr => {
+                const parts = noteStr.split('/');
+                const accidental = parts.length > 2 ? parts[2] : null; // חלק שלישי אופציונלי הוא אקראי
+                const note = new StaveNote({
+                    keys: [`${parts[0]}/${parts[1]}`],
+                    duration: 'q' // רבע
+                });
+
+                if (accidental) {
+                    note.addModifier(new Accidental(accidental));
+                }
+                return note;
+            });
+
+            // 4. יצירת קול (Voice) - אוסף של תווים
+            const voice = new Voice({ num_beats: notes.length, beat_value: 4 });
+            voice.addTickables(notes);
+
+            // 5. פורמט ושרטוט
+            new Formatter().joinVoices([voice]).format([voice], staveWidth - 50);
+            voice.draw(context, stave);
+        }
+
+        // --- הגדרות סולמות לדוגמה ---
+        
+        // סולם 1: דו מז'ור (C Major)
+        // C4 D4 E4 F4 G4 A4 B4 C5
+        drawScale(
+            'סולם דו מז\'ור', 
+            'treble', 
+            'C', 
+            ['c/4', 'd/4', 'e/4', 'f/4', 'g/4', 'a/4', 'b/4', 'c/5'],
+            '(Ionian)'
+        );
+
+        // סולם 2: סול מז'ור (G Major)
+        // G4 A4 B4 C5 D5 E5 F#5 G5
+        drawScale(
+            'סולם סול מז\'ור', 
+            'treble', 
+            'G', 
+            ['g/4', 'a/4', 'b/4', 'c/5', 'd/5', 'e/5', 'f/5/#' , 'g/5']
+        );
+
+        // סולם 3: לה מינור טבעי (A Natural Minor)
+        // A3 B3 C4 D4 E4 F4 G4 A4 - מפתח בס לצורך הדגמה
+        drawScale(
+            'סולם לה מינור טבעי', 
+            'bass', 
+            'Am', 
+            ['a/3', 'b/3', 'c/4', 'd/4', 'e/4', 'f/4', 'g/4', 'a/4'],
+            '(Aeolian)'
+        );
+        
+        // סולם 4: דו מינור הרמוני (C Harmonic Minor)
+        // C4 D4 Eb4 F4 G4 Ab4 B4 C5. B-טבעי משמש כאקראי
+        drawScale(
+            'סולם דו מינור הרמוני', 
+            'treble', 
+            'Cm', 
+            ['c/4', 'd/4', 'e/4/b', 'f/4', 'g/4', 'a/4/b', 'b/4', 'c/5']
+        );
+        
+        // סולם 5: פה# מינור (F# Minor)
+        // F#4 G#4 A4 B4 C#5 D5 E5 F#5
+        drawScale(
+            'סולם פה# מינור', 
+            'treble', 
+            'F#m', 
+            ['f/4/#', 'g/4/#', 'a/4', 'b/4', 'c/5/#', 'd/5', 'e/5', 'f/5/#']
+        );
+
+    </script>
+</body>
+</html>
